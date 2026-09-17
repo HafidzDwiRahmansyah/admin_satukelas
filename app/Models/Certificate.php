@@ -8,7 +8,9 @@ class Certificate extends Model
 {
     protected $fillable = [
         'user_id',
-        'course_id'
+        'course_id',
+        'asset_id',
+        'type',
     ];
 
     protected $casts = [

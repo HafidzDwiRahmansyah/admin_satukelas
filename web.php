@@ -11,12 +11,6 @@ use App\Http\Controllers\LearningPathController;
 use App\Http\Controllers\student\StudentController;
 use App\Http\Controllers\superadmin\SuperadminController;
 use App\Http\Controllers\ActiveUserController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\LessonController;
-use App\Http\Controllers\TopicController;
-use App\Http\Controllers\QuizController;
-use App\Http\Controllers\FlowController;
-use App\Http\Controllers\DataAuditController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,10 +31,9 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/system-flow', [FlowController::class, 'index'])->name('flow.index');
-    Route::get('/data-audit', [DataAuditController::class, 'index'])->name('data-audit.index');
-    Route::get('/data-audit/details/{section}', [DataAuditController::class, 'details'])->name('data-audit.details');
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    });
     
     Route::get('/certificate', [CertificateController::class, 'index'])->name('certificate.index');
 
@@ -49,14 +42,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('learning_paths', LearningPathController::class);
     Route::get('/courses/export', [CourseController::class, 'export'])->name('courses.export');
-    Route::get('/courses/trashed', [CourseController::class, 'trashed'])->name('courses.trashed');
-    Route::post('/courses/{course}/restore', [CourseController::class, 'restore'])->name('courses.restore');
     Route::get('/courses/search', [WebinarController::class, 'search'])->name('courses.search');
     Route::resource('webinars', WebinarController::class);
     Route::resource('courses', CourseController::class);
-    Route::resource('lessons', LessonController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::resource('topics', TopicController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::resource('quizzes', QuizController::class)->only(['store', 'update', 'destroy']);
     
 
     Route::delete('/superadmin/bulk-delete', [SuperadminController::class, 'bulkDelete'])->name('superadmin.bulkDelete');
@@ -70,9 +58,6 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/paid', [StudentController::class, 'index'])
             ->name('students.paid');
-
-        Route::get('/unpaid', [StudentController::class, 'unpaid'])
-            ->name('students.unpaid');
     
         Route::get('/paid/dashboard', [StudentController::class, 'dashboard'])
             ->name('students.paid.dashboard');

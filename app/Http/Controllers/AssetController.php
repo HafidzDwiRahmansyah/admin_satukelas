@@ -3,21 +3,98 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\CertificateTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AssetController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $assets = Asset::where('bucket', 'thumbnails')->orderBy('id', 'desc')->paginate(10);
-        return view('assets.index', compact('assets'));
+        $visibleTemplate = function ($query) {
+            $query->whereNull('course_id')->orWhereHas('course');
+        };
+        $query = CertificateTemplate::with(['course', 'asset'])
+            ->where($visibleTemplate)
+            ->latest('id');
+
+        if ($request->filled('certificate_type') && $request->certificate_type !== 'all') {
+            $query->where('certificate_type', $request->certificate_type);
+        }
+
+        if ($request->filled('template_status')) {
+            if ($request->template_status === 'complete') {
+                $query->whereNotNull('course_id')
+                    ->whereNotNull('asset_id')
+                    ->whereHas('course', function ($q) {
+                        $q->whereNotNull('title')->where('title', '<>', '');
+                    })
+                    ->whereHas('asset', function ($q) {
+                        $q->whereNotNull('file_name')->where('file_name', '<>', '');
+                    });
+            }
+
+            if ($request->template_status === 'incomplete') {
+                $query->where(function ($q) {
+                    $q->whereNull('course_id')
+                        ->orWhereNull('asset_id')
+                        ->orWhereHas('course', function ($courseQuery) {
+                            $courseQuery->whereNull('title')->orWhere('title', '');
+                        })
+                        ->orWhereHas('asset', function ($assetQuery) {
+                            $assetQuery->whereNull('file_name')->orWhere('file_name', '');
+                        });
+                });
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('certificate_type', 'ILIKE', "%{$search}%")
+                    ->orWhereHas('course', function ($courseQuery) use ($search) {
+                        $courseQuery->where('title', 'ILIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('asset', function ($assetQuery) use ($search) {
+                        $assetQuery->where('file_name', 'ILIKE', "%{$search}%")
+                            ->orWhere('url', 'ILIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        $templates = $query
+            ->paginate(24)
+            ->appends($request->only('certificate_type', 'template_status', 'search'));
+
+        $totalTemplateCount = (clone CertificateTemplate::query())->where($visibleTemplate)->count();
+        $participationTemplateCount = (clone CertificateTemplate::query())->where($visibleTemplate)->where('certificate_type', 'Partisipasi')->count();
+        $competenceTemplateCount = (clone CertificateTemplate::query())->where($visibleTemplate)->where('certificate_type', 'Kompetensi')->count();
+        $completeTemplateCount = (clone CertificateTemplate::query())->where($visibleTemplate)->whereNotNull('course_id')
+            ->whereNotNull('asset_id')
+            ->whereHas('course', function ($q) {
+                $q->whereNotNull('title')->where('title', '<>', '');
+            })
+            ->whereHas('asset', function ($q) {
+                $q->whereNotNull('file_name')->where('file_name', '<>', '');
+            })
+            ->count();
+        $incompleteTemplateCount = $totalTemplateCount - $completeTemplateCount;
+
+        return view('assets.index', compact(
+            'templates',
+            'totalTemplateCount',
+            'participationTemplateCount',
+            'competenceTemplateCount',
+            'completeTemplateCount',
+            'incompleteTemplateCount'
+        ));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'file' => 'required|image|max:2048',
+            'file' => 'required|file|mimes:jpg,jpeg,png,gif,webp,pdf,ppt,pptx|max:10240',
+            'bucket' => 'required|in:thumbnails,certificate_templates,lessons',
         ]);
 
         $file     = $request->file('file');
@@ -39,7 +116,7 @@ class AssetController extends Controller
 
         Asset::create([
             'url'       => 'http://storage.satukelas.co/' . $filename,
-            'bucket'    => 'thumbnails',
+            'bucket'    => $request->bucket,
             'file_name' => $filename,
             'extension' => $ext,
         ]);
@@ -52,23 +129,10 @@ class AssetController extends Controller
         $asset = Asset::findOrFail($id);
 
         $request->validate([
-            'file_name' => 'required|string|max:255',
+            'bucket' => 'required|in:thumbnails,certificate_templates,lessons,generated_certificate,certificate_template',
         ]);
 
-        // Lokasi file saat ini di server
-        $oldFilePath = public_path('storage/' . $asset->file_name);
-        $newFilePath = public_path('storage/' . $request->file_name);
-
-        // Cek kalau file lama ada, rename
-        if (file_exists($oldFilePath)) {
-            rename($oldFilePath, $newFilePath);
-        }
-
-        // Update database
-        $asset->update([
-            'file_name' => $request->file_name,
-            'url'       => 'http://storage.satukelas.co/' . $request->file_name,
-        ]);
+        $asset->update(['bucket' => $request->bucket]);
 
         return redirect()->route('assets.index')->with('success', 'File updated!');
     }
@@ -76,6 +140,16 @@ class AssetController extends Controller
     public function destroy($id)
     {
         $asset = Asset::findOrFail($id);
+
+        if ($asset->certificates()->exists()) {
+            return redirect()->route('assets.index')
+                ->with('error', 'Asset tidak dapat dihapus karena masih digunakan oleh certificate.');
+        }
+
+        if ($asset->certificateTemplates()->exists()) {
+            return redirect()->route('assets.index')
+                ->with('error', 'Asset tidak dapat dihapus karena masih digunakan oleh certificate_template.');
+        }
 
         Storage::disk('storagevps')->delete($asset->file_name);
         $asset->delete();

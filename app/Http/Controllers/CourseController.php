@@ -14,7 +14,12 @@ class CourseController extends Controller
 {
     public function index(Request $request)
     {
+        $showDeleted = $request->boolean('trashed');
         $query = Course::with(['learningPath', 'courseType', 'instructor']);
+
+        if ($showDeleted) {
+            $query->onlyTrashed();
+        }
 
         // Kalau ada filter & keyword
         if ($request->filled('filter') && $request->filled('search')) {
@@ -46,16 +51,43 @@ class CourseController extends Controller
             }
         }
 
+        if ($request->filled('course_type_id')) {
+            $query->where('course_type_id', $request->integer('course_type_id'));
+        }
+
         $courses = $query
             ->orderBy('created_at', 'desc')
             ->paginate(10)
-            ->appends($request->only('filter', 'search'));
+            ->appends($request->only('filter', 'search', 'course_type_id'));
 
         $learningPaths = LearningPath::all();
-        $courseTypes   = CourseType::all();
+        $courseTypes   = CourseType::query()
+            ->withCount(['courses' => function ($courseQuery) use ($showDeleted) {
+                if ($showDeleted) {
+                    $courseQuery->onlyTrashed();
+                }
+            }])
+            ->orderBy('title')
+            ->get();
         $instructors   = User::where('role', 'instructor')->get();
+        $trashedCourseCount = Course::onlyTrashed()->count();
 
-        return view('courses.index', compact('courses', 'learningPaths', 'courseTypes', 'instructors'));
+        return view('courses.index', compact('courses', 'learningPaths', 'courseTypes', 'instructors', 'showDeleted', 'trashedCourseCount'));
+    }
+
+    public function trashed(Request $request)
+    {
+        $request->merge(['trashed' => '1']);
+
+        return $this->index($request);
+    }
+
+    public function restore(int $course)
+    {
+        $deletedCourse = Course::onlyTrashed()->findOrFail($course);
+        $deletedCourse->restore();
+
+        return redirect()->route('courses.trashed')->with('success', 'Course berhasil dipulihkan ke daftar umum.');
     }
 
     public function create()

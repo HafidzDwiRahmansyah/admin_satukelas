@@ -13,4 +13,14 @@ class Asset extends Model
         'file_name',
         'extension',
     ];
+
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class, 'asset_id');
+    }
+
+    public function certificateTemplates()
+    {
+        return $this->hasMany(CertificateTemplate::class, 'asset_id');
+    }
 }

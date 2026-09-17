@@ -22,12 +22,21 @@ class StudentController extends Controller
     */
     public function index(Request $request)
     {
-        $query = User::where('role', 'student')
+        $query = User::whereRaw('LOWER(role) = ?', ['student'])
             ->whereHas('memberships')
             ->with([
                 'memberships.paket:id,title',
             ])
             ->withCount('certificates');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('email', 'ILIKE', "%{$search}%")
+                    ->orWhere('company', 'ILIKE', "%{$search}%");
+            });
+        }
 
         if ($request->status === 'active') {
             $query->whereHas('memberships', fn($q) =>
@@ -55,9 +64,49 @@ class StudentController extends Controller
             );
         }
 
-        $students = $query->latest()->paginate(10);
+        $paidStudentCount = (clone $query)->count();
+        $activeStudentCount = (clone $query)
+            ->whereHas('memberships', fn($q) => $q->where('expired_at', '>=', now()))
+            ->count();
+        $expiredStudentCount = (clone $query)
+            ->whereHas('memberships', fn($q) => $q->where('expired_at', '<', now()))
+            ->count();
 
-        return view('students.paid.index', compact('students'));
+        $students = $query
+            ->latest()
+            ->paginate(10)
+            ->appends($request->only('search', 'status', 'certification', 'paket'));
+
+        return view('students.paid.index', compact(
+            'students',
+            'paidStudentCount',
+            'activeStudentCount',
+            'expiredStudentCount'
+        ));
+    }
+
+    public function unpaid(Request $request)
+    {
+        $query = User::whereRaw('LOWER(role) = ?', ['student'])
+            ->whereDoesntHave('memberships')
+            ->withCount('certificates');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('email', 'ILIKE', "%{$search}%")
+                    ->orWhere('company', 'ILIKE', "%{$search}%");
+            });
+        }
+
+        $unpaidStudentCount = (clone $query)->count();
+        $students = $query
+            ->latest()
+            ->paginate(10)
+            ->appends($request->only('search'));
+
+        return view('students.unpaid.index', compact('students', 'unpaidStudentCount'));
     }
 
     /*

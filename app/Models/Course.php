@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Membership;
 use App\Models\Certificate;
 
 class Course extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'learning_path_id',
@@ -60,6 +61,28 @@ class Course extends Model
     public function certificates()
     {
         return $this->hasMany(Certificate::class);
+    }
+
+    public function certificateTemplates()
+    {
+        return $this->hasMany(CertificateTemplate::class, 'course_id');
+    }
+
+    public function topics()
+    {
+        return $this->hasMany(Topic::class, 'course_id')->orderBy('urutan');
+    }
+
+    public function lessons()
+    {
+        return $this->hasManyThrough(
+            Lesson::class,
+            Topic::class,
+            'course_id',
+            'topic_id',
+            'id',
+            'id'
+        );
     }
 
     public function courseType()

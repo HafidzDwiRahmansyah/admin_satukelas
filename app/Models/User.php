@@ -35,6 +35,6 @@ class User extends Authenticatable
 
     public function certificates()
     {
-        return $this->hasMany(\App\Models\Certificate::class);
+        return $this->hasMany(\App\Models\Certificate::class)->whereHas('course');
     }
 }

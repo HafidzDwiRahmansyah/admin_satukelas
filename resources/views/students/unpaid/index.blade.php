@@ -1,225 +1,57 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="px-6 py-6">
-    {{-- Header --}}
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-blue-700">Students Unpaid</h2>
-        <button onclick="openCreateModal()"
-            class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow hover:from-green-600 hover:to-green-700 flex items-center gap-2">
-            <span class="text-lg font-bold">+</span> Tambah Student
-        </button>
+<div class="mx-auto max-w-7xl space-y-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <div class="mb-2 flex items-center gap-2 text-sm text-slate-500">
+                <i class="fas fa-users text-rose-600"></i><span>Manajemen User</span><i class="fas fa-chevron-right text-xs text-slate-400"></i><span>Belum Bayar</span>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">User Belum Bayar</h1>
+            <p class="mt-1 text-sm text-slate-500">Daftar student yang belum memiliki membership.</p>
+        </div>
+        <a href="{{ route('students.paid') }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"><i class="fas fa-user-check"></i> Lihat Sudah Bayar</a>
     </div>
 
-    {{-- Table --}}
-    <div class="overflow-x-auto bg-white rounded-lg shadow">
-        <table class="w-full text-left border border-gray-200">
-            <thead class="bg-gray-900 text-white">
-                <tr>
-                    <th class="px-3 py-2">#</th>
-                    <th class="px-3 py-2">Nama</th>
-                    <th class="px-3 py-2">Email</th>
-                    <th class="px-3 py-2">Membership</th>
-                    <th class="px-3 py-2">Role</th>
-                    <th class="px-3 py-2">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($students as $index => $student)
-                <tr class="odd:bg-gray-50 even:bg-white hover:bg-gray-100 border-b">
-                    <td class="px-3 py-2">{{ $index + $students->firstItem() }}</td>
-                    <td class="px-3 py-2 font-medium">{{ $student->name }}</td>
-                    <td class="px-3 py-2 text-gray-600">{{ $student->email }}</td>
-                    <td class="px-3 py-2 flex flex-wrap gap-1">
-                        @forelse ($student->memberships as $membership)
-                        <span class="px-2 py-1 rounded-full text-xs {{ $membership->expired_at < now() ? 'bg-gray-400 text-gray-700' : 'bg-green-600 text-white' }}">
-                            {{ $membership->paket->title ?? '-' }}
-                            ({{ \Carbon\Carbon::parse($membership->start_at)->format('d M Y') }}
-                            - {{ \Carbon\Carbon::parse($membership->expired_at)->format('d M Y') }})
-                        </span>
-                        @empty
-                        <span class="px-2 py-1 rounded-full text-xs bg-gray-300 text-gray-700">Unpaid</span>
-                        @endforelse
-                    </td>
-                    <td class="px-3 py-2">{{ ucfirst($student->role) }}</td>
-                    <td class="px-3 py-2 flex gap-2">
-                        <button type="button" onclick='openEditModal(@json($student))'
-                            class="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 shadow-sm flex items-center gap-1">
-                            ✏️ Edit
-                        </button>
-                        <form action="{{ route('students.destroy', $student->id) }}" method="POST" class="deleteForm inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 shadow-sm flex items-center gap-1">
-                                🗑 Hapus
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-gray-500">Belum ada data.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div class="flex items-center justify-between"><p class="text-xs font-medium text-slate-500 sm:text-sm">Total Belum Bayar</p><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600"><i class="fas fa-user-clock"></i></span></div><p class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ number_format($unpaidStudentCount) }}</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div class="flex items-center justify-between"><p class="text-xs font-medium text-slate-500 sm:text-sm">Tanpa Membership</p><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><i class="fas fa-id-card-clip"></i></span></div><p class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ number_format($unpaidStudentCount) }}</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div class="flex items-center justify-between"><p class="text-xs font-medium text-slate-500 sm:text-sm">Halaman Ini</p><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 text-violet-600"><i class="fas fa-list"></i></span></div><p class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ $students->count() }}</p><p class="mt-1 text-xs text-slate-400">dari {{ $students->total() }} hasil</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div class="flex items-center justify-between"><p class="text-xs font-medium text-slate-500 sm:text-sm">Perlu Follow Up</p><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600"><i class="fas fa-bell"></i></span></div><p class="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">{{ number_format($unpaidStudentCount) }}</p><p class="mt-1 text-xs text-slate-400">belum memiliki membership</p></div>
     </div>
 
-    {{-- Pagination --}}
-    <div class="mt-4">
-        {{ $students->links() }}
-    </div>
-</div>
-
-{{-- Modal Form (Create & Edit) --}}
-<div id="studentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 max-h-[90vh] overflow-y-auto">
-        <form id="studentForm" method="POST">
-            @csrf
-            <input type="hidden" name="_method" id="formMethod" value="POST">
-
-            <div class="flex justify-between items-center mb-4">
-                <h5 class="text-lg font-bold text-gray-700" id="modalTitle">Tambah Student</h5>
-                <button type="button" onclick="closeModal()" class="text-gray-600 hover:text-gray-800 text-xl">✕</button>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {{-- Name --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nama</label>
-                    <input type="text" name="name" id="name"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" required>
-                </div>
-
-                {{-- Email --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" name="email" id="email"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" required>
-                </div>
-
-                {{-- Password --}}
-                <div id="passwordField">
-                    <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" name="password" id="password"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300">
-                </div>
-
-                {{-- Sex --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Jenis Kelamin</label>
-                    <select name="sex" id="sex"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" required>
-                        <option value="">-- Pilih --</option>
-                        <option value="male">Laki-laki</option>
-                        <option value="female">Perempuan</option>
-                    </select>
-                </div>
-
-                {{-- Telephone --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Telepon</label>
-                    <input type="text" name="telephone" id="telephone"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" required>
-                </div>
-
-                {{-- Position --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Jabatan</label>
-                    <input type="text" name="position" id="position"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" required>
-                </div>
-
-                {{-- Membership --}}
-                <div id="membershipField" class="md:col-span-2 hidden">
-                    <label class="block text-sm font-medium text-gray-700">Paket Membership</label>
-                    <div class="flex gap-2 items-center">
-                        <select name="paket_membership_id[0][paket_membership_id]" id="paket_membership_id"
-                            class="w-1/2 border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300">
-                            <option value="">-- Pilih Paket --</option>
-                            @foreach(\App\Models\PaketMembership::all() as $paket)
-                            <option value="{{ $paket->id }}">{{ $paket->title }}</option>
-                            @endforeach
-                        </select>
-
-                        <input type="date" name="paket_membership_id[0][start_date]"
-                            class="w-1/4 border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" placeholder="Start Date">
-
-                        <input type="date" name="paket_membership_id[0][end_date]"
-                            class="w-1/4 border rounded-lg px-3 py-2 focus:ring focus:ring-blue-300" placeholder="End Date">
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 mt-6">
-                <button type="button" onclick="closeModal()"
-                    class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Batal</button>
-                <button type="submit" id="saveBtn"
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
-            </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <form action="{{ route('students.unpaid') }}" method="GET" class="flex flex-col gap-3 sm:flex-row">
+            <div class="relative flex-1"><i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama, email, atau perusahaan..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-100"></div>
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"><i class="fas fa-search"></i> Cari</button>
+            @if(request()->filled('search'))<a href="{{ route('students.unpaid') }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"><i class="fas fa-rotate-left"></i> Reset</a>@endif
         </form>
     </div>
+
+    <div class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="font-semibold text-slate-900">Daftar User Belum Bayar</h2><p class="mt-1 text-xs text-slate-500">Menampilkan {{ $students->count() }} dari {{ $students->total() }} user</p></div><span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">Perlu perhatian</span></div>
+        <div class="overflow-x-auto">
+            <table class="min-w-[780px] w-full text-left text-sm">
+                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3 font-semibold">User</th><th class="px-5 py-3 font-semibold">Posisi / Perusahaan</th><th class="px-5 py-3 font-semibold">Sertifikat</th><th class="px-5 py-3 font-semibold">Terdaftar</th><th class="px-5 py-3 font-semibold">Aksi</th></tr></thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($students as $student)
+                    <tr class="transition hover:bg-rose-50/30"><td class="px-5 py-4"><div class="flex items-center gap-3"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-sm font-bold text-white">{{ strtoupper(substr($student->name ?: 'U', 0, 1)) }}</span><div><p class="font-semibold text-slate-800">{{ $student->name ?: 'Tanpa nama' }}</p><p class="mt-0.5 text-xs text-slate-400">{{ $student->email ?: 'Email tidak tersedia' }}</p></div></div></td><td class="px-5 py-4"><p class="text-sm text-slate-700">{{ $student->position ?: '-' }}</p><p class="mt-1 text-xs text-slate-400">{{ $student->company ?: 'Perusahaan tidak diatur' }}</p></td><td class="px-5 py-4">@if($student->certificates_count > 0)<span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"><i class="fas fa-certificate"></i> {{ $student->certificates_count }} sertifikat</span>@else<span class="text-xs text-slate-400">Belum ada</span>@endif</td><td class="px-5 py-4 text-xs text-slate-500">{{ $student->created_at?->format('d M Y') ?? '-' }}</td><td class="px-5 py-4"><a href="{{ route('students.show', $student->id) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"><i class="fas fa-eye"></i> Detail</a></td></tr>
+                    @empty
+                    <tr><td colspan="5" class="px-5 py-16 text-center"><i class="fas fa-user-check text-4xl text-emerald-300"></i><p class="mt-4 font-semibold text-slate-700">Semua student sudah memiliki membership</p><p class="mt-1 text-sm text-slate-500">Tidak ada user yang perlu ditindaklanjuti.</p></td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="space-y-4 md:hidden">
+        @forelse($students as $student)
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div class="flex items-start justify-between gap-3 p-4"><div class="flex min-w-0 items-center gap-3"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-sm font-bold text-white">{{ strtoupper(substr($student->name ?: 'U', 0, 1)) }}</span><div class="min-w-0"><h3 class="truncate font-semibold text-slate-800">{{ $student->name ?: 'Tanpa nama' }}</h3><p class="truncate text-xs text-slate-400">{{ $student->email }}</p></div></div><span class="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Belum bayar</span></div><div class="grid grid-cols-2 gap-3 border-t border-slate-100 p-4"><div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-400">Posisi</p><p class="mt-1 truncate text-xs font-semibold text-slate-700">{{ $student->position ?: '-' }}</p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-400">Sertifikat</p><p class="mt-1 text-xs font-semibold text-slate-700">{{ $student->certificates_count }} sertifikat</p></div></div><div class="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span class="text-xs text-slate-400">Terdaftar {{ $student->created_at?->format('d M Y') ?? '-' }}</span><a href="{{ route('students.show', $student->id) }}" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"><i class="fas fa-eye"></i> Detail</a></div></article>
+        @empty
+        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-16 text-center shadow-sm"><i class="fas fa-user-check text-4xl text-emerald-300"></i><p class="mt-4 font-semibold text-slate-700">Semua student sudah memiliki membership</p></div>
+        @endforelse
+    </div>
+
+    <div>{{ $students->links() }}</div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    function openCreateModal() {
-        document.getElementById('studentForm').reset();
-        document.getElementById('formMethod').value = 'POST';
-        document.getElementById('studentForm').action = "{{ route('students.store') }}";
-        document.getElementById('modalTitle').innerText = "Tambah Student";
-        document.getElementById('passwordField').classList.remove('hidden'); // tampilkan password
-        document.getElementById('membershipField').classList.add('hidden'); // sembunyikan membership
-        document.getElementById('studentModal').classList.remove('hidden');
-    }
-
-    function openEditModal(student) {
-        document.getElementById('studentForm').reset();
-        document.getElementById('formMethod').value = 'PUT';
-        document.getElementById('studentForm').action = "/students/" + student.id;
-        document.getElementById('modalTitle').innerText = "Edit Student";
-
-        // isi data
-        document.getElementById('name').value = student.name;
-        document.getElementById('email').value = student.email;
-        document.getElementById('sex').value = student.sex;
-        document.getElementById('telephone').value = student.phone;
-        document.getElementById('position').value = student.position;
-
-        document.getElementById('passwordField').classList.add('hidden'); // sembunyikan password
-        document.getElementById('membershipField').classList.remove('hidden'); // tampilkan membership
-
-        // set membership jika ada
-        if (student.memberships && student.memberships.length > 0) {
-            const membership = student.memberships[0];
-            document.getElementById('paket_membership_id').value = membership.paket_membership_id;
-            document.querySelector('input[name="paket_membership_id[0][start_date]"]').value = membership.start_at.split(' ')[0];
-            document.querySelector('input[name="paket_membership_id[0][end_date]"]').value = membership.expired_at.split(' ')[0];
-        }
-
-        document.getElementById('studentModal').classList.remove('hidden');
-    }
-
-    function closeModal() {
-        document.getElementById('studentModal').classList.add('hidden');
-    }
-
-    document.querySelectorAll('.deleteForm').forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: 'Yakin ingin menghapus?',
-                text: "Data akan dihapus permanen!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Hapus!'
-            }).then((result) => {
-                if (result.isConfirmed) form.submit();
-            });
-        });
-    });
-</script>
 @endsection

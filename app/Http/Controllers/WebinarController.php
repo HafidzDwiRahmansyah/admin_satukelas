@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Webinar;
 use App\Models\Course;
+use App\Models\Certificate;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class WebinarController extends Controller
 {
@@ -13,7 +15,8 @@ class WebinarController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Webinar::with('course');
+        $query = Webinar::with(['course.learningPath', 'course.certificates'])
+            ->whereHas('course');
 
         // Filter & Search
         if ($request->filled('filter') && $request->filled('search')) {
@@ -41,9 +44,37 @@ class WebinarController extends Controller
             }
         }
 
-        $webinars = $query->orderBy('id', 'desc')->paginate(10);
+        $webinars = $query
+            ->orderBy('id', 'desc')
+            ->paginate(10)
+            ->appends($request->only('filter', 'search'));
 
-        return view('webinars.index', compact('webinars'));
+        $webinarCourseIds = (clone $query)
+            ->whereNotNull('course_id')
+            ->pluck('course_id')
+            ->unique();
+
+        $totalWebinars = (clone $query)->count();
+        $publishedWebinars = (clone $query)->where('is_published', true)->count();
+        $webinarsWithTemplates = (clone $query)
+            ->whereHas('course.learningPath', function ($q) {
+                $q->whereNotNull('certificate_url')
+                    ->where('certificate_url', '<>', '');
+            })
+            ->count();
+        $webinarsWithCertificates = Certificate::query()
+            ->whereIn('course_id', $webinarCourseIds)
+            ->where('type', 'Partisipasi')
+            ->distinct('user_id')
+            ->count('user_id');
+
+        return view('webinars.index', compact(
+            'webinars',
+            'totalWebinars',
+            'publishedWebinars',
+            'webinarsWithTemplates',
+            'webinarsWithCertificates'
+        ));
     }
 
     /**
@@ -53,7 +84,7 @@ class WebinarController extends Controller
     {
         // dd($request->all());
         $request->validate([
-            'course_id'    => 'required|exists:courses,id',
+            'course_id'    => ['required', Rule::exists('courses', 'id')->where(fn ($query) => $query->whereNull('deleted_at'))],
             'total_seats'  => 'required|integer|min:1',
             'time_starts'   => 'required|date',
             'time_ends'    => 'required|date|after:time_starts',
@@ -73,7 +104,7 @@ class WebinarController extends Controller
     public function update(Request $request, Webinar $webinar)
     {
         $request->validate([
-            'course_id'    => 'required|exists:courses,id',
+            'course_id'    => ['required', Rule::exists('courses', 'id')->where(fn ($query) => $query->whereNull('deleted_at'))],
             'total_seats'  => 'required|integer|min:1',
             'time_starts'   => 'required|date',
             'time_ends'    => 'required|date|after:time_starts',
